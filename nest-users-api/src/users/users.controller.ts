@@ -4,35 +4,54 @@ import { UpdateUserDto } from './dto/request/update-user_dto';
 import { BaseController } from 'src/common/controllers/base.controller';
 import { ApiResponse } from 'src/common/dto/response/ApiResponse';
 import { UserResponseDto } from './dto/response/user.response.dto';
+import { User } from '@prisma/client';
+import { UsersService } from './users.service';
+import { create } from 'domain';
 
 @Controller('users')
 export class UsersController extends BaseController {
     protected readonly logger = new Logger(UsersController.name);
 
+    // constructor
+    constructor(private readonly usersService: UsersService) {
+        super();
+    }
+
     @Get("/")
-    getUsers(): ApiResponse<UserResponseDto[] | null> {
-        return this.makeResponse(true, [] as UserResponseDto[], 'This will return all users', 200);
+    async getUsers(): Promise<ApiResponse<UserResponseDto[] | null>> {
+        return this.makeResponse(
+            true,
+            await this.usersService.findAll(),
+            'All users retrieved successfully',
+            200
+        );
     }
 
 
     @Get("/:id")
-    getUserById(@Param('id') id: string): ApiResponse<UserResponseDto | null> {
+    async getUserById(@Param('id') id: string): Promise<ApiResponse<UserResponseDto | null>> {
         this.logger.debug(`Received request to get user with id: ${id}`);
 
-        return this.makeResponse(true, null, `This will return user with id ${id}`, 200);
+        return this.makeResponse(true, await this.usersService.findById(parseInt(id)), `User with id ${id} retrieved successfully`, 200);
     }
 
     @Get("/get-by-email/:email")
-    getUserByEmail(@Param('email') email: string): ApiResponse<UserResponseDto | null> {
+    async getUserByEmail(@Param('email') email: string): Promise<ApiResponse<UserResponseDto | null>> {
         this.logger.debug(`Received request to get user with email: ${email}`);
 
         return this.makeResponse(true, null, `This will return user with email ${email}`, 200);
     }
 
     @Post("/")
-    createNewUser(@Body() createUserDto: CreateUserDto): ApiResponse<UserResponseDto | null> {
-        this.logger.debug(`Received request to create user with data: ${JSON.stringify(createUserDto)}`);
-        return this.makeResponse(true, null, 'This will create a new user', 201);
+    async createNewUser(@Body() createUserDto: CreateUserDto): Promise<ApiResponse<UserResponseDto | null>> {
+        // this.logger.debug(`Received request to create user with data: ${JSON.stringify(createUserDto)}`);
+
+        const createdUser = await this.usersService.createUser(createUserDto);
+
+        return this.makeResponse(true,
+            createdUser,
+            'This will create a new user', 201
+        );
     }
 
     @Put("/:id")
