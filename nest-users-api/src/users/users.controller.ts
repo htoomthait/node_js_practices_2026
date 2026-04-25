@@ -30,40 +30,62 @@ export class UsersController extends BaseController {
 
     @Get("/:id")
     async getUserById(@Param('id') id: string): Promise<ApiResponse<UserResponseDto | null>> {
-        this.logger.debug(`Received request to get user with id: ${id}`);
 
-        return this.makeResponse(true, await this.usersService.findById(parseInt(id)), `User with id ${id} retrieved successfully`, 200);
+
+        return this.makeResponse(
+            true,
+            await this.usersService.findById(parseInt(id)),
+            `User with id ${id} retrieved successfully`,
+            200
+        );
     }
 
     @Get("/get-by-email/:email")
     async getUserByEmail(@Param('email') email: string): Promise<ApiResponse<UserResponseDto | null>> {
-        this.logger.debug(`Received request to get user with email: ${email}`);
 
-        return this.makeResponse(true, null, `This will return user with email ${email}`, 200);
+        return this.makeResponse(
+            true,
+            await this.usersService.findByEmail(email),
+            `User with email ${email} retrieved successfully`,
+            200
+        );
     }
 
     @Post("/")
     async createNewUser(@Body() createUserDto: CreateUserDto): Promise<ApiResponse<UserResponseDto | null>> {
-        // this.logger.debug(`Received request to create user with data: ${JSON.stringify(createUserDto)}`);
 
-        const createdUser = await this.usersService.createUser(createUserDto);
 
-        return this.makeResponse(true,
-            createdUser,
-            'This will create a new user', 201
+
+
+        return this.makeResponse(
+            true,
+            await this.usersService.createUser(createUserDto),
+            'The user has been created successfully',
+            201
         );
     }
 
     @Put("/:id")
-    updateUserById(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto): ApiResponse<UserResponseDto | null> {
-        this.logger.debug(`Received request to update user with id: ${id} and data: ${JSON.stringify(updateUserDto)}`);
-        return this.makeResponse(true, null, `This will update user with id ${id}`, 200);
+    async updateUserById(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto): Promise<ApiResponse<UserResponseDto | null>> {
+
+
+        return this.makeResponse(
+            true,
+            await this.usersService.updateUser(parseInt(id), updateUserDto),
+            `The user with id ${id} has been updated successfully`,
+            200
+        );
     }
 
     @Delete("/:id")
-    deleteUserById(@Param('id') id: string): ApiResponse<UserResponseDto | null> {
-        this.logger.debug(`Received request to delete user with id: ${id}`);
-        return this.makeResponse(true, null, `This will delete user with id ${id}`, 200);
+    async deleteUserById(@Param('id') id: string): Promise<ApiResponse<UserResponseDto | null>> {
+
+        return this.makeResponse(
+            true,
+            await this.usersService.deleteUser(parseInt(id)),
+            `The user with id ${id} has been deleted successfully`,
+            200
+        );
     }
 
 

@@ -2,6 +2,8 @@ import { Injectable, InternalServerErrorException, ConflictException, NotFoundEx
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateUserDto } from './dto/request/create-user-dto';
 import { UserResponseDto } from './dto/response/user.response.dto';
+import { UpdateUserDto } from './dto/request/update-user_dto';
+import { User } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
@@ -15,7 +17,9 @@ export class UsersService {
      * @returns A promise resolving to an array of User objects.
      */
     async findAll() {
-        let users = await this.prisma.user.findMany();
+        let users = await this.prisma.user.findMany({
+            orderBy: { id: 'desc' },
+        });
         return users.map(UserResponseDto.fromEntity);
     }
 
@@ -75,6 +79,85 @@ export class UsersService {
             }
             // Handle unexpected DB errors
             throw new InternalServerErrorException('Error retrieving user');
+        }
+    }
+
+    async findByEmail(email: string): Promise<UserResponseDto> {
+        try {
+            const user = await this.prisma.user.findUnique({
+                where: { email },
+            });
+
+            if (!user) {
+                throw new NotFoundException(`User with email ${email} not found`);
+            }
+
+            return UserResponseDto.fromEntity(user);
+        } catch (error) {
+            if (error instanceof NotFoundException) {
+                throw error;
+            }
+            throw new InternalServerErrorException('Error retrieving user by email');
+        }
+
+    }
+
+    /**
+    * Update user by ID 
+    */
+    async updateUser(id: number, updateData: UpdateUserDto): Promise<UserResponseDto> {
+        try {
+            const user = await this.prisma.user.findUnique({
+                where: { id },
+            });
+
+            if (!user) {
+                // This is the standard NestJS "Entity not found" approach
+                throw new NotFoundException(`User with ID ${id} not found`);
+            }
+
+            // Update the user with the new data
+            const updatedUser = await this.prisma.user.update({
+                where: { id },
+                data: {
+                    ...updateData,
+                    dob: updateData.dob ? new Date(updateData.dob) : new Date("1910-01-01"),
+                }
+            });
+
+            return UserResponseDto.fromEntity(updatedUser);
+        } catch (error) {
+            if (error instanceof NotFoundException) {
+                throw error;
+            }
+            throw new InternalServerErrorException('Error updating user');
+        }
+    }
+
+    /**
+     * Delete user by ID (to be implemented)
+     */
+    async deleteUser(id: number): Promise<UserResponseDto> {
+        try {
+            const user = await this.prisma.user.findUnique({
+                where: { id },
+            });
+
+            if (!user) {
+                // This is the standard NestJS "Entity not found" approach
+                throw new NotFoundException(`User with ID ${id} not found`);
+            }
+
+            await this.prisma.user.delete({
+                where: { id },
+            });
+
+            return UserResponseDto.fromEntity(user);
+        } catch (error) {
+            if (error instanceof NotFoundException) {
+                throw error;
+            }
+            throw new InternalServerErrorException('Error deleting user');
         }
     }
 
