@@ -1,11 +1,12 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Injectable, InternalServerErrorException, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { LoginDto } from './dto/request/login.dto';
 import { RegisterDto } from './dto/request/register.dto';
 import * as bcrypt from 'bcrypt';
 import 'dotenv/config';
-import { StringValue } from "ms";
+import ms, { StringValue } from "ms";
+import { RefreshTokenDto } from './dto/request/refersh.token.dto';
 
 @Injectable()
 export class AuthService {
@@ -16,7 +17,7 @@ export class AuthService {
 
     protected readonly logger = new Logger(AuthService.name);
 
-    async register(dto: RegisterDto) {
+    public async register(dto: RegisterDto) {
 
 
         try {
@@ -41,7 +42,7 @@ export class AuthService {
                     role: 'USER'
                 }
             });
-            return this.generateTokens(user.id, user.email, user.role);
+            return await this.generateTokens(user.id, user.email, user.role);
 
         } catch (error) {
             if (error instanceof UnauthorizedException) {
@@ -52,7 +53,7 @@ export class AuthService {
         }
     }
 
-    async login(dto: LoginDto) {
+    public async login(dto: LoginDto) {
         const user = await this.prisma.user.findUnique({
             where: { email: dto.email }
         });
@@ -65,10 +66,46 @@ export class AuthService {
 
         if (!matched) throw new UnauthorizedException();
 
-        return this.generateTokens(user.id, user.email, user.role);
+        return await this.generateTokens(user.id, user.email, user.role);
     }
 
-    async generateTokens(userId: number, email: string, role: string) {
+    public async refreshTokens(dto: RefreshTokenDto) {
+
+        try {
+            const user = await this.prisma.user.findUnique({
+                where: { id: dto.userId },
+            });
+
+            if (!user || !user.hashedRefreshToken) {
+                throw new ForbiddenException('Access Denied');
+            }
+
+            const rtMatches = await bcrypt.compare(dto.refreshToken, user.hashedRefreshToken);
+
+            if (!rtMatches) {
+                throw new ForbiddenException('Access Denied');
+            }
+
+
+            return await this.generateTokens(user.id, user.email, user.role);
+
+
+        } catch (error) {
+            this.logger.error('Error refreshing tokens', error);
+
+            if (error instanceof ForbiddenException) {
+                throw error;
+            }
+
+
+            throw new InternalServerErrorException('Error refreshing tokens');
+        }
+
+
+
+    }
+
+    private async generateTokens(userId: number, email: string, role: string) {
         const payload = { sub: userId, email, role };
 
         const accessToken = await this.jwtService.signAsync(payload, {
@@ -76,10 +113,16 @@ export class AuthService {
             expiresIn: (process.env.JWT_ACCESS_TOKEN_EXPIRE ?? "15m") as StringValue,
         });
 
+
+
+        const accessTokenExpireAfter = this.getExpiresAt(process.env.JWT_ACCESS_TOKEN_EXPIRE ?? "15m");
+
         const refreshToken = await this.jwtService.signAsync(payload, {
             secret: process.env.JWT_REFRESH_SECRET ?? 'refresh-secret',
             expiresIn: (process.env.JWT_REFRESH_TOKEN_EXPIRE ?? "7d") as StringValue,
         });
+
+        const refreshTokenExpireAfter = this.getExpiresAt(process.env.JWT_REFRESH_TOKEN_EXPIRE ?? "7d");
 
         const hashedRt = await bcrypt.hash(refreshToken, 10);
 
@@ -89,9 +132,29 @@ export class AuthService {
         });
 
         return {
+            userId,
+            email,
+            role,
             accessToken,
-            refreshToken
+            accessTokenExpireAfter,
+            refreshToken,
+            refreshTokenExpireAfter
         };
+    }
+
+
+    private getExpiresAt(expirationString: string): Date {
+        const amount = parseInt(expirationString);
+        const unit = expirationString.replace(/[0-9]/g, '').toLowerCase();
+        const now = new Date();
+
+        switch (unit) {
+            case 's': return new Date(now.getTime() + amount * 1000);
+            case 'm': return new Date(now.getTime() + amount * 60000);
+            case 'h': return new Date(now.getTime() + amount * 3600000);
+            case 'd': return new Date(now.getTime() + amount * 86400000);
+            default: return new Date(now.getTime() + 3600000); // Default 1 hour
+        }
     }
 
 

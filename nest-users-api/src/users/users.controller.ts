@@ -10,6 +10,7 @@ import { create } from 'domain';
 import { AuthGuard } from '@nestjs/passport';
 
 
+@UseGuards(AuthGuard())
 @Controller('users')
 export class UsersController extends BaseController {
     protected readonly logger = new Logger(UsersController.name);
@@ -21,7 +22,7 @@ export class UsersController extends BaseController {
 
 
 
-    @UseGuards(AuthGuard())
+
     @Get("/")
     async getUsers(): Promise<ApiResponse<UserResponseDto[] | null>> {
         return this.makeResponse(
