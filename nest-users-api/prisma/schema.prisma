@@ -21,8 +21,21 @@ model User {
   phoneNumber String
   address     String?
   dob         DateTime?
+
+  password         String?
+  role             Role     @default(USER)
+  hashedRefreshToken String?
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  
+
   @@map("tbl_users")
+}
+
+
+enum Role {
+  USER
+  ADMIN
 }

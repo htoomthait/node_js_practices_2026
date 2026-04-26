@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Logger, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Logger, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { CreateUserDto } from './dto/request/create-user-dto';
 import { UpdateUserDto } from './dto/request/update-user_dto';
 import { BaseController } from 'src/common/controllers/base.controller';
@@ -7,16 +7,21 @@ import { UserResponseDto } from './dto/response/user.response.dto';
 import { User } from '@prisma/client';
 import { UsersService } from './users.service';
 import { create } from 'domain';
+import { AuthGuard } from '@nestjs/passport';
+
 
 @Controller('users')
 export class UsersController extends BaseController {
     protected readonly logger = new Logger(UsersController.name);
 
-    // constructor
+
     constructor(private readonly usersService: UsersService) {
         super();
     }
 
+
+
+    @UseGuards(AuthGuard())
     @Get("/")
     async getUsers(): Promise<ApiResponse<UserResponseDto[] | null>> {
         return this.makeResponse(
