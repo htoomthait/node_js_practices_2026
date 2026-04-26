@@ -4,13 +4,18 @@ import { CreateUserDto } from './dto/request/create-user-dto';
 import { UserResponseDto } from './dto/response/user.response.dto';
 import { UpdateUserDto } from './dto/request/update-user_dto';
 import { User } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
+import { AuthService } from 'src/auth/auth.service';
 
 @Injectable()
 export class UsersService {
 
     protected readonly logger = new Logger(UsersService.name);
 
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly authService: AuthService
+    ) { }
 
     /**
      * Retrieves all users from the database.
@@ -41,15 +46,20 @@ export class UsersService {
                 throw new ConflictException('User with this email already exists');
             }
 
-            this.logger.debug(`Creating user with data: ${JSON.stringify(userData)}`);
+            const hashedPassword = await bcrypt.hash(userData.password, 10);
 
             // Create the new user
             const createdUser = await this.prisma.user.create({
                 data: {
                     ...userData,
+                    password: hashedPassword,
                     dob: userData.dob ? new Date(userData.dob) : new Date("1910-01-01"),
                 }
             });
+
+            // generate token for the new user and update token to database
+            await this.authService.generateTokens(createdUser.id, createdUser.email, createdUser.role);
+
             return UserResponseDto.fromEntity(createdUser);
         } catch (error) {
             this.logger.error('Error creating user', error);
@@ -116,14 +126,22 @@ export class UsersService {
                 throw new NotFoundException(`User with ID ${id} not found`);
             }
 
+            if (updateData.password != "") {
+                updateData.password = await bcrypt.hash(updateData.password, 10);
+            }
+
             // Update the user with the new data
             const updatedUser = await this.prisma.user.update({
                 where: { id },
                 data: {
                     ...updateData,
                     dob: updateData.dob ? new Date(updateData.dob) : new Date("1910-01-01"),
+                    password: updateData.password != "" ? updateData.password : user.password,
                 }
             });
+
+            // generate token for the new user and update token to database
+            await this.authService.generateTokens(updatedUser.id, updatedUser.email, updatedUser.role);
 
             return UserResponseDto.fromEntity(updatedUser);
         } catch (error) {

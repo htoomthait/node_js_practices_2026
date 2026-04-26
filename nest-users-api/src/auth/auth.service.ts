@@ -105,7 +105,7 @@ export class AuthService {
 
     }
 
-    private async generateTokens(userId: number, email: string, role: string) {
+    public async generateTokens(userId: number, email: string, role: string) {
         const payload = { sub: userId, email, role };
 
         const accessToken = await this.jwtService.signAsync(payload, {

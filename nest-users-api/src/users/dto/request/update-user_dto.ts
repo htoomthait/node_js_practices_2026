@@ -3,19 +3,22 @@ import { IsDateString, IsEmail, IsNotEmpty, IsString } from "class-validator";
 export class UpdateUserDto {
     @IsString()
     @IsNotEmpty({ message: "Full name is required" })
-    fullname?: string;
+    fullname!: string;
 
     @IsEmail()
     @IsNotEmpty({ message: "Email is required and must be a valid email address" })
-    email?: string;
+    email!: string;
 
     @IsString()
     @IsNotEmpty({ message: "Phone number is required" })
-    phoneNumber?: string;
+    phoneNumber!: string;
 
     @IsString()
-    address?: string;
+    address: string = "";
 
     @IsDateString()
-    dob?: Date;
+    dob: Date = new Date("1910-01-01");
+
+    @IsString()
+    password: string = "";
 }
