@@ -4,6 +4,8 @@ import { RegisterDto } from './dto/request/register.dto';
 import { LoginDto } from './dto/request/login.dto';
 import { BaseController } from 'src/common/controllers/base.controller';
 import { RefreshTokenDto } from './dto/request/refersh.token.dto';
+import { ApiResponse } from 'src/common/dto/response/ApiResponse';
+import { GeneratedTokenDto } from './dto/response/generated-token.dto';
 
 @Controller('auth')
 export class AuthController extends BaseController {
@@ -13,7 +15,7 @@ export class AuthController extends BaseController {
     }
 
     @Post('register')
-    async register(@Body() dto: RegisterDto) {
+    async register(@Body() dto: RegisterDto): Promise<ApiResponse<GeneratedTokenDto | null>> {
 
 
         return this.makeResponse(
@@ -28,7 +30,7 @@ export class AuthController extends BaseController {
     }
 
     @Post('login')
-    async login(@Body() dto: LoginDto) {
+    async login(@Body() dto: LoginDto): Promise<ApiResponse<GeneratedTokenDto | null>> {
 
 
         return this.makeResponse(
@@ -40,7 +42,7 @@ export class AuthController extends BaseController {
     }
 
     @Post('refresh')
-    async refreshTokens(@Body() dto: RefreshTokenDto) {
+    async refreshTokens(@Body() dto: RefreshTokenDto): Promise<ApiResponse<GeneratedTokenDto | null>> {
 
         return this.makeResponse(
             true,

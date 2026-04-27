@@ -7,6 +7,7 @@ import * as bcrypt from 'bcrypt';
 import 'dotenv/config';
 import ms, { StringValue } from "ms";
 import { RefreshTokenDto } from './dto/request/refersh.token.dto';
+import { GeneratedTokenDto } from './dto/response/generated-token.dto';
 
 @Injectable()
 export class AuthService {
@@ -17,7 +18,7 @@ export class AuthService {
 
     protected readonly logger = new Logger(AuthService.name);
 
-    public async register(dto: RegisterDto) {
+    public async register(dto: RegisterDto): Promise<GeneratedTokenDto> {
 
 
         try {
@@ -54,7 +55,7 @@ export class AuthService {
         }
     }
 
-    public async login(dto: LoginDto) {
+    public async login(dto: LoginDto): Promise<GeneratedTokenDto> {
 
 
         try {
@@ -81,7 +82,7 @@ export class AuthService {
         }
     }
 
-    public async refreshTokens(dto: RefreshTokenDto) {
+    public async refreshTokens(dto: RefreshTokenDto): Promise<GeneratedTokenDto> {
 
         try {
             const user = await this.prisma.user.findUnique({
@@ -117,7 +118,7 @@ export class AuthService {
 
     }
 
-    public async generateTokens(userId: number, email: string, role: string) {
+    public async generateTokens(userId: number, email: string, role: string): Promise<GeneratedTokenDto> {
         const payload = { sub: userId, email, role };
 
         const accessToken = await this.jwtService.signAsync(payload, {
@@ -143,7 +144,7 @@ export class AuthService {
             data: { hashedRefreshToken: hashedRt }
         });
 
-        return {
+        return GeneratedTokenDto.fromData(
             userId,
             email,
             role,
@@ -151,7 +152,9 @@ export class AuthService {
             accessTokenExpireAfter,
             refreshToken,
             refreshTokenExpireAfter
-        };
+        );
+
+
     }
 
 
