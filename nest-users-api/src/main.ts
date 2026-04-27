@@ -5,6 +5,7 @@ import * as dotenv from 'dotenv';
 import { ConfigService } from '@nestjs/config';
 import { readFileSync, writeFileSync } from 'fs';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { AllExceptionsFilter } from './common/exceptions/all-exception.filter';
 
 async function bootstrap() {
   dotenv.config(); // Loads .env file
@@ -56,6 +57,7 @@ async function bootstrap() {
 
 
   app.useGlobalInterceptors(new ResponseInterceptor());
+  app.useGlobalFilters(new AllExceptionsFilter());
 
 
   await app.listen(appRunningPort || 3000);

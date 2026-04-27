@@ -126,8 +126,13 @@ export class UsersService {
                 throw new NotFoundException(`User with ID ${id} not found`);
             }
 
-            if (updateData.password != "") {
+            // 1. Better check: Ensure it's a string and not empty
+            if (updateData.password && updateData.password.trim() !== "" && updateData.password !== undefined) {
                 updateData.password = await bcrypt.hash(updateData.password, 10);
+            } else {
+                // 2. Delete the password from updateData if we aren't changing it
+                // This prevents overwriting the DB with an empty string or undefined
+                (updateData as any).password = "";
             }
 
             // Update the user with the new data
@@ -145,9 +150,12 @@ export class UsersService {
 
             return UserResponseDto.fromEntity(updatedUser);
         } catch (error) {
+            this.logger.error('Error updating user', error);
             if (error instanceof NotFoundException) {
+
                 throw error;
             }
+
             throw new InternalServerErrorException('Error updating user');
         }
     }

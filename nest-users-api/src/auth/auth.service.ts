@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, InternalServerErrorException, Logger, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, InternalServerErrorException, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { LoginDto } from './dto/request/login.dto';
@@ -27,7 +27,7 @@ export class AuthService {
             });
 
             if (existingUser) {
-                throw new UnauthorizedException('User with this email already exists');
+                throw new ConflictException('User with this email already exists');
             }
 
             const hashedPassword = await bcrypt.hash(dto.password, 10);
@@ -45,28 +45,40 @@ export class AuthService {
             return await this.generateTokens(user.id, user.email, user.role);
 
         } catch (error) {
+            this.logger.error('Error during registration', error);
             if (error instanceof UnauthorizedException) {
                 throw error;
             }
-            this.logger.error('Error during registration', error);
+
             throw new UnauthorizedException('Registration failed');
         }
     }
 
     public async login(dto: LoginDto) {
-        const user = await this.prisma.user.findUnique({
-            where: { email: dto.email }
-        });
 
-        if (!user || !user.password) {
-            throw new UnauthorizedException('Invalid credentials');
+
+        try {
+            const user = await this.prisma.user.findUnique({
+                where: { email: dto.email }
+            });
+
+            if (!user || !user.password) {
+                throw new UnauthorizedException('Invalid credentials');
+            }
+
+            const matched = await bcrypt.compare(dto.password, user.password);
+
+            if (!matched) throw new UnauthorizedException('Inavalid credentials');
+
+            return await this.generateTokens(user.id, user.email, user.role);
+        } catch (error) {
+            this.logger.error('Error during login', error);
+            if (error instanceof UnauthorizedException) {
+                throw error;
+            }
+
+            throw new UnauthorizedException('Login operation failed');
         }
-
-        const matched = await bcrypt.compare(dto.password, user.password);
-
-        if (!matched) throw new UnauthorizedException();
-
-        return await this.generateTokens(user.id, user.email, user.role);
     }
 
     public async refreshTokens(dto: RefreshTokenDto) {
