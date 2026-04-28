@@ -18,40 +18,57 @@ export class AuthService {
 
     protected readonly logger = new Logger(AuthService.name);
 
-    public async register(dto: RegisterDto): Promise<GeneratedTokenDto> {
-
-
+    public async register(
+        dto: RegisterDto,
+    ): Promise<GeneratedTokenDto> {
         try {
+            const user = await this.prisma.$transaction(async (tx) => {
+                const existingUser = await tx.user.findUnique({
+                    where: { email: dto.email },
+                });
 
-            const existingUser = await this.prisma.user.findUnique({
-                where: { email: dto.email }
-            });
-
-            if (existingUser) {
-                throw new ConflictException('User with this email already exists');
-            }
-
-            const hashedPassword = await bcrypt.hash(dto.password, 10);
-
-            const user = await this.prisma.user.create({
-                data: {
-                    fullname: dto.fullname,
-                    email: dto.email,
-                    password: hashedPassword,
-                    phoneNumber: dto.phoneNumber,
-                    dob: new Date(dto.dob),
-                    role: 'USER'
+                if (existingUser) {
+                    throw new ConflictException(
+                        'User with this email already exists',
+                    );
                 }
-            });
-            return await this.generateTokens(user.id, user.email, user.role);
 
+                const hashedPassword = await bcrypt.hash(
+                    dto.password,
+                    10,
+                );
+
+                return tx.user.create({
+                    data: {
+                        fullname: dto.fullname,
+                        email: dto.email,
+                        password: hashedPassword,
+                        phoneNumber: dto.phoneNumber,
+                        dob: new Date(dto.dob),
+                        role: 'USER',
+                    },
+                });
+            });
+
+            // Transaction committed already here
+            return await this.generateTokens(
+                user.id,
+                user.email,
+                user.role,
+            );
         } catch (error) {
-            this.logger.error('Error during registration', error);
-            if (error instanceof UnauthorizedException) {
+            this.logger.error(
+                'Error during registration',
+                error,
+            );
+
+            if (error instanceof ConflictException) {
                 throw error;
             }
 
-            throw new UnauthorizedException('Registration failed');
+            throw new UnauthorizedException(
+                'Registration failed',
+            );
         }
     }
 
