@@ -76,17 +76,21 @@ export class AuthService {
 
 
         try {
-            const user = await this.prisma.user.findUnique({
-                where: { email: dto.email }
+            const user = await this.prisma.$transaction(async (tx) => {
+                const user = await tx.user.findUnique({
+                    where: { email: dto.email }
+                });
+
+                if (!user || !user.password) {
+                    throw new UnauthorizedException('Invalid credentials');
+                }
+
+                const matched = await bcrypt.compare(dto.password, user.password);
+
+                if (!matched) throw new UnauthorizedException('Invalid credentials');
+
+                return user;
             });
-
-            if (!user || !user.password) {
-                throw new UnauthorizedException('Invalid credentials');
-            }
-
-            const matched = await bcrypt.compare(dto.password, user.password);
-
-            if (!matched) throw new UnauthorizedException('Inavalid credentials');
 
             return await this.generateTokens(user.id, user.email, user.role);
         } catch (error) {
@@ -102,19 +106,33 @@ export class AuthService {
     public async refreshTokens(dto: RefreshTokenDto): Promise<GeneratedTokenDto> {
 
         try {
-            const user = await this.prisma.user.findUnique({
-                where: { id: dto.userId },
+
+            const user = await this.prisma.$transaction(async (tx) => {
+                const refreshTokenSecret = process.env.JWT_REFRESH_SECRET;
+
+                const payload = await this.jwtService.verifyAsync(dto.refreshToken, {
+                    secret: refreshTokenSecret,
+                });
+
+                const user = await this.prisma.user.findUnique({
+                    where: { id: payload.sub },
+                });
+
+                if (!user || !user.hashedRefreshToken) {
+                    throw new ForbiddenException('Access Denied');
+                }
+
+                const rtMatches = await bcrypt.compare(dto.refreshToken, user.hashedRefreshToken);
+
+                if (!rtMatches) {
+                    throw new ForbiddenException('Access Denied');
+                }
+
+                return user;
+
             });
 
-            if (!user || !user.hashedRefreshToken) {
-                throw new ForbiddenException('Access Denied');
-            }
 
-            const rtMatches = await bcrypt.compare(dto.refreshToken, user.hashedRefreshToken);
-
-            if (!rtMatches) {
-                throw new ForbiddenException('Access Denied');
-            }
 
 
             return await this.generateTokens(user.id, user.email, user.role);
@@ -135,6 +153,16 @@ export class AuthService {
 
     }
 
+    /**
+     * This method generates both access and refresh tokens, hashes the refresh token, and stores it in the database.
+     * @author Htoo Maung Thait 
+     * @since 2026-04-29
+     * @param userId 
+     * @param email 
+     * @param role 
+     * @returns Promise<GeneratedTokenDto> generatedTokens
+     * 
+     */
     public async generateTokens(userId: number, email: string, role: string): Promise<GeneratedTokenDto> {
         const payload = { sub: userId, email, role };
 
