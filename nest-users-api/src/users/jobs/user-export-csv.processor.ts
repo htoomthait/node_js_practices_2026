@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 
-@Processor('export-users-csv')
+@Processor('export-users-csv', { concurrency: 1 })
 export class UserExportCsvProcessor extends WorkerHost {
 
     private readonly logger = new Logger(UserExportCsvProcessor.name);
