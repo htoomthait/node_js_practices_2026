@@ -7,6 +7,8 @@ import { readFileSync, writeFileSync } from 'fs';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { AllExceptionsFilter } from './common/exceptions/all-exception.filter';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import * as path from 'path';
+import * as express from 'express';
 
 async function bootstrap() {
   dotenv.config(); // Loads .env file
@@ -60,6 +62,7 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ResponseInterceptor());
   app.useGlobalFilters(new AllExceptionsFilter());
 
+  app.use('/downloads', express.static(path.join(process.cwd(), 'downloads')));
 
 
   await app.listen(appRunningPort || 3000);

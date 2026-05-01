@@ -106,5 +106,15 @@ export class UsersController extends BaseController {
         );
     }
 
+    @Post("/export-users-csv")
+    async exportUsersCsv(): Promise<ApiResponse<{ message: string } | null>> {
+
+        return this.makeResponse(
+            true,
+            await this.usersService.exportUsersCsv(),
+            'Users exported successfully',
+            200
+        );
+    }
 
 }

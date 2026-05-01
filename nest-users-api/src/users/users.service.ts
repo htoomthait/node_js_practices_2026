@@ -8,6 +8,7 @@ import * as bcrypt from 'bcrypt';
 import { AuthService } from 'src/auth/auth.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class UsersService {
@@ -18,6 +19,7 @@ export class UsersService {
         private readonly prisma: PrismaService,
         private readonly authService: AuthService,
         @InjectQueue('user-queue') private userQueue: Queue,
+        @InjectQueue('export-users-csv') private exportUsersCsvQueue: Queue,
     ) { }
 
     /**
@@ -197,6 +199,19 @@ export class UsersService {
 
 
         return { message: 'Job added to the queue' };
+    }
+
+    exportUsersCsv() {
+        const jobId = uuidv4();
+
+        this.logger.log(`Adding export users job to the queue with ID: ${jobId}`);
+
+        this.exportUsersCsvQueue.add('export-users-csv', {
+            jobId,
+        });
+
+        return { message: `Export users job added to the queue with ID: ${jobId}. And you can download the CSV file from http://localhost:5400/downloads/${jobId}.csv  ` };
+
     }
 
 }
