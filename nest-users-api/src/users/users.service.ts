@@ -6,6 +6,8 @@ import { UpdateUserDto } from './dto/request/update-user_dto';
 import { User } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from 'src/auth/auth.service';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 @Injectable()
 export class UsersService {
@@ -14,7 +16,8 @@ export class UsersService {
 
     constructor(
         private readonly prisma: PrismaService,
-        private readonly authService: AuthService
+        private readonly authService: AuthService,
+        @InjectQueue('user-queue') private userQueue: Queue,
     ) { }
 
     /**
@@ -185,6 +188,15 @@ export class UsersService {
             }
             throw new InternalServerErrorException('Error deleting user');
         }
+    }
+
+    justMakeLoggingWithQueue() {
+        this.logger.log('Adding job to the queue');
+
+        this.userQueue.add('logging-job', { message: 'Hello, world!' }, { delay: 5000 });
+
+
+        return { message: 'Job added to the queue' };
     }
 
 }

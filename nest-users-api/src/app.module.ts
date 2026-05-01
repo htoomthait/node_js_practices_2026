@@ -7,12 +7,19 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { BullModule } from '@nestjs/bullmq';
 
 @Module({
   imports: [UsersModule, PrismaModule, AuthModule, ThrottlerModule.forRoot([{
     ttl: 60000,     // time window in milliseconds (1 minute)
     limit: 1000,   // max requests per TTL
   }]),
+    BullModule.forRoot({
+      connection: {
+        host: 'localhost',
+        port: 6379,
+      },
+    }),
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

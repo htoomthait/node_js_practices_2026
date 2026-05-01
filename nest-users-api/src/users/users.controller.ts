@@ -95,4 +95,16 @@ export class UsersController extends BaseController {
     }
 
 
+    @Post("/just-make-logging-with-queue")
+    async justMakeLoggingWithQueue(): Promise<ApiResponse<{ message: string } | null>> {
+
+        return this.makeResponse(
+            true,
+            await this.usersService.justMakeLoggingWithQueue(),
+            'Logging job added to the queue successfully',
+            200
+        );
+    }
+
+
 }
