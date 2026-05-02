@@ -11,13 +11,16 @@ import * as path from 'path';
 import * as express from 'express';
 
 async function bootstrap() {
-  dotenv.config(); // Loads .env file
+
+
+
+
 
 
   const app = await NestFactory.create(AppModule);
   app.useGlobalPipes(new ValidationPipe());
 
-  const configureService = new ConfigService();
+  const configureService = app.get(ConfigService);
   const logger = new Logger("Main File");
 
   const appRunningPort = configureService.get<number>('PORT');
@@ -33,6 +36,7 @@ async function bootstrap() {
   const dbPort = process.env.DB_PORT;
   const dbUsername = process.env.DB_USERNAME;
   const dbPassword = process.env.DB_PASSWORD;
+
 
   const databaseUrl = `${dbProvider}://${dbUsername}:${dbPassword}@${dbHost}:${dbPort}/${dbName}`; // db url concatenation
   logger.log(`Database URL: ${databaseUrl}`);
@@ -63,6 +67,8 @@ async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter());
 
   app.use('/downloads', express.static(path.join(process.cwd(), 'downloads')));
+
+
 
 
   await app.listen(appRunningPort || 3000);

@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, ConflictException, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, ConflictException, NotFoundException, Logger, Inject } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateUserDto } from './dto/request/create-user-dto';
 import { UserResponseDto } from './dto/response/user.response.dto';
@@ -9,6 +9,8 @@ import { AuthService } from 'src/auth/auth.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { v4 as uuidv4 } from 'uuid';
+import { REQUEST } from '@nestjs/core';
+import type { Request } from 'express';
 
 @Injectable()
 export class UsersService {
@@ -20,6 +22,7 @@ export class UsersService {
         private readonly authService: AuthService,
         @InjectQueue('user-queue') private userQueue: Queue,
         @InjectQueue('export-users-csv') private exportUsersCsvQueue: Queue,
+        @Inject(REQUEST) private req: Request
     ) { }
 
     /**
@@ -192,6 +195,10 @@ export class UsersService {
         }
     }
 
+    get baseUrl(): string {
+        return `${this.req.protocol}://${this.req.get('host')}`;
+    }
+
     justMakeLoggingWithQueue() {
         this.logger.log('Adding job to the queue');
 
@@ -210,7 +217,7 @@ export class UsersService {
             jobId,
         });
 
-        return { message: `Export users job added to the queue with ID: ${jobId}. And you can download the CSV file from http://localhost:5400/downloads/${jobId}.csv  ` };
+        return { message: `Export users job added to the queue with ID: ${jobId}. And you can download the CSV file from ${this.baseUrl}/downloads/${jobId}.csv  ` };
 
     }
 

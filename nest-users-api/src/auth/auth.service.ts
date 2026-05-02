@@ -8,12 +8,14 @@ import 'dotenv/config';
 import ms, { StringValue } from "ms";
 import { RefreshTokenDto } from './dto/request/refersh.token.dto';
 import { GeneratedTokenDto } from './dto/response/generated-token.dto';
+import { AppConfig } from 'src/config/app.config';
 
 @Injectable()
 export class AuthService {
     constructor(
         private prisma: PrismaService,
-        private jwtService: JwtService
+        private jwtService: JwtService,
+        private readonly appConfig: AppConfig,
     ) { }
 
     protected readonly logger = new Logger(AuthService.name);
@@ -108,7 +110,7 @@ export class AuthService {
         try {
 
             const user = await this.prisma.$transaction(async (tx) => {
-                const refreshTokenSecret = process.env.JWT_REFRESH_SECRET;
+                const refreshTokenSecret = this.appConfig.jwtRefreshTokenSecret;
 
                 const payload = await this.jwtService.verifyAsync(dto.refreshToken, {
                     secret: refreshTokenSecret,
@@ -166,21 +168,23 @@ export class AuthService {
     public async generateTokens(userId: number, email: string, role: string): Promise<GeneratedTokenDto> {
         const payload = { sub: userId, email, role };
 
+
+
         const accessToken = await this.jwtService.signAsync(payload, {
-            secret: process.env.JWT_ACCESS_SECRET ?? 'default-secrect',
-            expiresIn: (process.env.JWT_ACCESS_TOKEN_EXPIRE ?? "15m") as StringValue,
+            secret: this.appConfig.jwtAccessTokenSecret ?? 'defaultAccessTokenSecret',
+            expiresIn: (this.appConfig.jwtAccessTokenExpireAfter ?? '15m') as StringValue,
         });
 
 
 
-        const accessTokenExpireAfter = this.getExpiresAt(process.env.JWT_ACCESS_TOKEN_EXPIRE ?? "15m");
+        const accessTokenExpireAfter = this.getExpiresAt(this.appConfig.jwtAccessTokenExpireAfter ?? "15m");
 
         const refreshToken = await this.jwtService.signAsync(payload, {
-            secret: process.env.JWT_REFRESH_SECRET ?? 'refresh-secret',
-            expiresIn: (process.env.JWT_REFRESH_TOKEN_EXPIRE ?? "7d") as StringValue,
+            secret: this.appConfig.jwtRefreshTokenSecret ?? 'defaultRefreshTokenSecret',
+            expiresIn: (this.appConfig.jwtRefreshTokenExpireAfter ?? "7d") as StringValue,
         });
 
-        const refreshTokenExpireAfter = this.getExpiresAt(process.env.JWT_REFRESH_TOKEN_EXPIRE ?? "7d");
+        const refreshTokenExpireAfter = this.getExpiresAt(this.appConfig.jwtRefreshTokenExpireAfter ?? "7d");
 
         const hashedRt = await bcrypt.hash(refreshToken, 10);
 
